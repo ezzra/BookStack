@@ -132,11 +132,14 @@ class Activity extends Model implements Feedable
             $bookSlug = request()->route()->parameter('bookSlug');
             $book = $entityRepo->getBySlug('book', $bookSlug);
             $children = $entityRepo->getBookChildren($book);
+            $pageIds = [];
+            $chapterIds = [];        
             foreach ($children as $child) { 
                 if (is_a($child, 'BookStack\Entities\Page')) {
                     $pageIds[] = $child->id; 
                     continue;
                 }
+                $chapterIds[] = $child->id;
                 $pages = $entityRepo->getChapterChildren($child);
                 foreach ($pages as $page) { $pageIds[] = $page->id; }
             }
@@ -144,6 +147,10 @@ class Activity extends Model implements Feedable
                     where(function ($query) use ($book) {
                         $query->where('key', 'like', 'book_%')
                         ->where('entity_id', $book->id);
+                    })
+                    ->orWhere(function ($query) use ($chapterIds) {
+                        $query->where('key', 'like', 'chapter_%')
+                        ->whereIn('entity_id', $chapterIds);
                     })
                     ->orWhere(function ($query) use ($pageIds) {
                         $query->where('key', 'like', 'page_%')
