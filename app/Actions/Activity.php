@@ -90,8 +90,17 @@ class Activity extends Model implements Feedable
         if (request()->route()->parameter('pageSlug')) {
             $pageSlug = request()->route()->parameter('pageSlug');
             $bookSlug = request()->route()->parameter('bookSlug');
-            $page = $pageRepo->getPageBySlug($pageSlug, $bookSlug);        
-            return Activity::where('key', 'like', 'page_%')->where('entity_id', $page->id)->get();
+            $page = $pageRepo->getPageBySlug($pageSlug, $bookSlug);  
+            return Activity::
+                    where(function ($query) use ($page) {
+                        $query->where('key', 'like', 'page_%')
+                        ->where('entity_id', $page->id);
+                    })
+                    ->orWhere(function ($query) use ($page) {
+                        $query->where('key', 'commented_on')
+                        ->where('entity_id', $page->id);
+                    })
+                    ->get();
         } 
 
         # chapter subscription
@@ -109,6 +118,10 @@ class Activity extends Model implements Feedable
                     })
                     ->orWhere(function ($query) use ($pageIds) {
                         $query->where('key', 'like', 'page_%')
+                        ->whereIn('entity_id', $pageIds);
+                    })
+                    ->orWhere(function ($query) use ($pageIds) {
+                        $query->where('key', 'commented_on')
                         ->whereIn('entity_id', $pageIds);
                     })
                     ->get();
@@ -134,6 +147,10 @@ class Activity extends Model implements Feedable
                     })
                     ->orWhere(function ($query) use ($pageIds) {
                         $query->where('key', 'like', 'page_%')
+                        ->whereIn('entity_id', $pageIds);
+                    })
+                    ->orWhere(function ($query) use ($pageIds) {
+                        $query->where('key', 'commented_on')
                         ->whereIn('entity_id', $pageIds);
                     })
                     ->get();
