@@ -84,6 +84,29 @@ class Activity extends Model implements Feedable
         ]);
     }
     
+    /**
+     * Filters out similar activity.
+     * @param Activity[] $activities
+     * @return array
+     */
+    static function filterSimilar($activities)
+    {
+        $newActivity = [];
+        $previousItem = false;
+        foreach ($activities as $activityItem) {
+            if ($previousItem === false) {
+                $previousItem = $activityItem;
+                $newActivity[] = $activityItem;
+                continue;
+            }
+            if (!$activityItem->isSimilarTo($previousItem)) {
+                $newActivity[] = $activityItem;
+            }
+            $previousItem = $activityItem;
+        }
+        return $newActivity;
+    }
+    
     public static function getFeedItems(\BookStack\Entities\Repos\PageRepo $pageRepo, \BookStack\Entities\Repos\EntityRepo $entityRepo)
     {
         # page subscription
@@ -91,7 +114,7 @@ class Activity extends Model implements Feedable
             $pageSlug = request()->route()->parameter('pageSlug');
             $bookSlug = request()->route()->parameter('bookSlug');
             $page = $pageRepo->getPageBySlug($pageSlug, $bookSlug);  
-            return Activity::
+            $activities = Activity::
                     where(function ($query) use ($page) {
                         $query->where('key', 'like', 'page_%')
                         ->where('entity_id', $page->id);
@@ -101,6 +124,8 @@ class Activity extends Model implements Feedable
                         ->where('entity_id', $page->id);
                     })
                     ->get();
+                    
+            return Activity::filterSimilar($activities);
         } 
 
         # chapter subscription
@@ -111,7 +136,7 @@ class Activity extends Model implements Feedable
             $pages = $entityRepo->getChapterChildren($chapter);
             $pageIds = [];
             foreach ($pages as $page) { $pageIds[] = $page->id; }
-            return Activity::
+            $activities = Activity::
                     where(function ($query) use ($chapter) {
                         $query->where('key', 'like', 'chapter_%')
                         ->where('entity_id', $chapter->id);
@@ -125,6 +150,8 @@ class Activity extends Model implements Feedable
                         ->whereIn('entity_id', $pageIds);
                     })
                     ->get();
+                    
+            return Activity::filterSimilar($activities);
         }
 
         # book subscription
@@ -143,7 +170,7 @@ class Activity extends Model implements Feedable
                 $pages = $entityRepo->getChapterChildren($child);
                 foreach ($pages as $page) { $pageIds[] = $page->id; }
             }
-            return Activity::
+            $activities = Activity::
                     where(function ($query) use ($book) {
                         $query->where('key', 'like', 'book_%')
                         ->where('entity_id', $book->id);
@@ -161,8 +188,10 @@ class Activity extends Model implements Feedable
                         ->whereIn('entity_id', $pageIds);
                     })
                     ->get();
+                    
+            return Activity::filterSimilar($activities);
         }
         
-       return Activity::all();
+       return Activity::filterSimilar(Activity::all());
     }
 }
